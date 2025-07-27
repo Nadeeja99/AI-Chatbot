@@ -64,19 +64,41 @@ export default function ChatbotPage() {
     setInputValue('');
     setIsLoading(true);
 
-    // Simulate AI thinking time
-    setTimeout(() => {
+    try {
+      const response = await fetch('http://localhost:5000/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage.text }),
+      });
+      const data = await response.json();
+      let aiText = '';
+      // Gemini API response structure: data.candidates[0].content.parts[0].text
+      if (data && data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+        aiText = data.candidates[0].content.parts[0].text;
+      } else if (data.error) {
+        aiText = 'Error: ' + (typeof data.error === 'string' ? data.error : JSON.stringify(data.error));
+      } else {
+        aiText = 'Sorry, I could not understand the response from the server.';
+      }
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: generateAIResponse(userMessage.text),
+        text: aiText,
         sender: 'ai',
         timestamp: new Date(),
       };
-
       setMessages(prev => [...prev, aiResponse]);
+    } catch (error: any) {
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'Error: ' + (error?.message || 'Failed to fetch response from server.'),
+        sender: 'ai',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, aiResponse]);
+    } finally {
       setIsLoading(false);
       inputRef.current?.focus();
-    }, 1000 + Math.random() * 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
